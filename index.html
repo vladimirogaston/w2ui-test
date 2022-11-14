@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>W2UI Demo: grid/21</title>
+    <link rel="stylesheet" type="text/css" href="https://rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.css">
+</head>
+
+<body>
+
+    <div id="grid" style="width: 900px; height: 400px;"></div>
+    <br>
+    <label style="margin-left: 20px">
+        <input type="checkbox" id="fixedsize" checked="checked" onclick="advanceOnEdit(this.checked)">
+        Advance On Edit
+    </label>
+
+    <script type="module">
+        import { w2grid, w2popup } from 'https://rawgit.com/vitmalina/w2ui/master/dist/w2ui.es6.min.js'
+
+        var products = [
+            { id: 1, code: 'A-001', text: 'John Cook', price: 10 },
+            { id: 2, code: 'A-002', text: 'Steve Jobs', price: 5 },
+            { id: 3, code: 'A-003', text: 'Peter Sanders', price: 2 }
+        ];
+
+        function buscarPorNombre(fcombo) {
+            let prod = null;
+            for (let i = 0; i < products.length; i++) {
+                const product = products[i];
+                if (product.text == fcombo) {
+                    prod = product;
+                }
+            }
+            return prod;
+        }
+
+        let grid = new w2grid({
+            name: 'grid',
+            box: '#grid',
+            show: {
+                toolbar: true,
+                footer: true,
+                toolbarSave: true
+            },
+            columns: [
+                { field: 'recid', text: 'ID', size: '50px', sortable: true, resizable: true },
+                { field: 'fcode', text: 'Code', size: '50px', sortable: true, resizable: true },
+                {
+                    field: 'combo', text: 'Producto', size: '150px', sortable: true, resizable: true, hidden1: true,
+                    editable: { type: 'combo', items: products, filter: true }
+                },
+                {
+                    field: 'fcantidad', text: 'Cantidad', size: '80px', sortable: true, resizable: true, render: 'int',
+                    editable: { type: 'int', min: 0, max: 32756 }
+                },
+                {
+                    field: 'money', text: 'Precio', size: '80px', sortable: true, resizable: true, render: 'money',
+                    editable: { type: 'money' }
+                },
+                {
+                    field: 'percent', text: 'Descuento', size: '80px', sortable: true, resizable: true, render: 'percent:1',
+                    editable: { type: 'percent', precision: 1 }
+                },
+                {
+                    field: 'ftotal', text: 'Total', size: '80px', sortable: true, resizable: true, render: 'money',
+                    editable: { type: 'money' }
+                },
+                {
+                    field: 'list', text: 'list', size: '50%', sortable: true, resizable: true, hidden: true,
+                    editable: { type: 'list', items: products, showAll: true },
+                    render: function (record, extra) {
+                        return extra.value?.text || '';
+                    }
+                }
+            ],
+            toolbar: {
+                items: [
+                    { id: 'add', type: 'button', text: 'Add Record', icon: 'w2ui-icon-plus' },
+                    { type: 'break' },
+                    { type: 'button', id: 'showChanges', text: 'Show Changes' }
+                ],
+                onClick(event) {
+                    if (event.target == 'add') {
+                        let recid = grid.records.length + 1
+                        this.owner.add({ recid });
+                        this.owner.scrollIntoView(recid);
+                        this.owner.editField(recid, 1)
+                    }
+                    if (event.target == 'showChanges') {
+                        showChanged()
+                    }
+                }
+            },
+            records: [],
+            onEditField: function (event) {
+                const column = event.detail.column;
+                const index = event.detail.index;
+                const row = grid.get(index + 1);
+                const w2ui = row.w2ui;
+                //    
+                if (column == 2) {
+                    if (w2ui != null) {
+                        const changes = w2ui.changes;
+                        const fcombo = changes.combo;
+                        if (fcombo != null) {
+                            let prod = buscarPorNombre(fcombo);
+                            if (prod != null) {
+                                row.fcode = prod.code;
+                                row.money = prod.price;
+                                row.fcantidad = 0;
+                                row.ftotal = 0;
+                                row.percent = 0;
+                            }
+                        }
+                    }
+                }
+                //
+                if (column == 3) {
+                    const changes = w2ui.changes;
+                    const fcantidad = changes.fcantidad;
+                    
+                    console.log("PERCENT " + row.percent);
+
+                    let total = new Number(fcantidad).valueOf() * new Number(row.money).valueOf();
+                    row.ftotal = total - new Number(row.percent).valueOf();
+                }
+                //
+                grid.refreshRow(index + 1);
+            }
+        });
+
+        window.showChanged = function () {
+            w2popup.open({
+                title: 'Records Changes',
+                with: 600,
+                height: 550,
+                body: `<pre>${JSON.stringify(grid.getChanges(), null, 4)}</pre>`,
+                actions: { Ok: w2popup.close }
+            })
+        }
+
+        window.advanceOnEdit = function (checked) {
+            grid.advanceOnEdit = checked
+        }
+    </script>
+
+</body>
+
+</html>
